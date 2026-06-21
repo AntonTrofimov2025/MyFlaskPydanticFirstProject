@@ -1,7 +1,7 @@
 import os
 
 from flask import Flask, jsonify, request
-from models import UserRegistration
+from models import UserRegistration, User
 from pydantic import ValidationError
 
 import sqlite3
@@ -24,7 +24,7 @@ def init_db():
                      email TEXT NOT NULL UNIQUE,
                      password TEXT NOT NULL,
                      birth_date TEXT NOT NULL,
-                     phone_number TEXT NOT NULL
+                     phone_number TEXT
                      )""")
 
 @app.route('/')
@@ -34,7 +34,7 @@ def home():
 @app.route('/registration', methods=['POST'])
 def user_registration():
     try:
-        user = UserRegistration(**request.get_json(silent=True))
+        user = UserRegistration.model_validate(request.get_json(silent=True))
     except ValidationError as e:
         return jsonify({"error": e.errors(include_url=False)}), 400
 
@@ -42,7 +42,7 @@ def user_registration():
         with get_db() as conn:
             conn.execute("""INSERT INTO users (username, email, password, birth_date, phone_number)
                             VALUES (?, ?, ?, ?, ?)""", (user.username, user.email,
-                                                        user.password, user.birth_date,
+                                                        user.password, user.birth_date.isoformat(),
                                                         user.phone_number))
             conn.commit()
     except sqlite3.IntegrityError:
@@ -53,8 +53,9 @@ def user_registration():
 @app.route('/users')
 def users():
     with get_db() as conn:
-        data = conn.execute("""SELECT * FROM users""").fetchall()
-        return jsonify([dict(row) for row in data]), 200
+        data = conn.execute("""SELECT id, username, email, birth_date, phone_number FROM users""").fetchall()
+        users_list = [User.model_validate(dict(row)).model_dump() for row in data]
+        return jsonify(users_list), 200
 
 if __name__ == "__main__":
     init_db()

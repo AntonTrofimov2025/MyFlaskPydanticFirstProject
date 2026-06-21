@@ -13,7 +13,7 @@ class User(BaseModel):
     birth_date: date
     phone_number: Optional[str]
 
-    model_config = ConfigDict(json_encoders={date: lambda v: v.strftime('%Y-%m-%d')})
+    model_config = ConfigDict(json_encoders={date: lambda v: v.strftime('%Y-%m-%d')}, extra='forbid')
 
 class UserRegistration(BaseModel):
     username: str = Field(..., min_length=2, max_length=10)
